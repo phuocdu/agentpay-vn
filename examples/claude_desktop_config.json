@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "agentpay": {
+      "command": "python",
+      "args": ["-m", "agentpay.mcp_server"],
+      "env": {
+        "AGENTPAY_API_KEY": "ap_test_xxx",
+        "AGENTPAY_BASE_URL": "https://agentpay.servicesai.vn/v1"
+      }
+    }
+  }
+}

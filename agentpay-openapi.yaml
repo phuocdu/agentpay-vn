@@ -1,0 +1,226 @@
+openapi: 3.1.0
+info:
+  title: "AgentPay VN — Public API (Tier 1: Receive)"
+  version: 0.1.0
+  description: |
+    Hạ tầng thanh toán VietQR cho AI agent. Tầng 1 (Receive): tạo yêu cầu thanh toán,
+    xác nhận settlement qua bank-feed. **AgentPay không giữ tiền** — tiền đi thẳng
+    từ người trả vào tài khoản ngân hàng của tenant (người bán).
+
+    Xác thực: header `Authorization: Bearer ap_live_xxx` (hoặc `ap_test_xxx` cho sandbox).
+    Sandbox: key `ap_test_*` chạy trên dữ liệu giả lập; mô phỏng settlement bằng
+    `POST /sandbox/simulate-settlement`.
+  contact: { url: "https://sono.servicesai.vn" }
+
+servers:
+  - url: https://api.agentpay.vn/v1
+    description: Production (placeholder — giai đoạn đầu có thể là agentpay.servicesai.vn/v1)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /payment-requests:
+    post:
+      operationId: createPaymentRequest
+      summary: Tạo yêu cầu thanh toán (sinh QR VietQR về tài khoản của tenant)
+      description: |
+        Idempotency: gửi header `Idempotency-Key` (khuyến nghị) — cùng key trong 24h
+        trả về cùng payment request, không tạo trùng.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: { type: string, maxLength: 64 }
+          required: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, description]
+              properties:
+                amount:
+                  type: integer
+                  minimum: 1000
+                  description: Số tiền VND (>= 1.000đ)
+                description:
+                  type: string
+                  maxLength: 100
+                  description: Mô tả hiển thị cho người trả (không đưa vào nội dung CK)
+                ttl_minutes:
+                  type: integer
+                  default: 60
+                  minimum: 5
+                  maximum: 1440
+                metadata:
+                  type: object
+                  additionalProperties: true
+                  description: Dữ liệu tùy ý của agent (order_id, conversation_id…), trả nguyên trong webhook
+      responses:
+        "201":
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /payment-requests/{id}:
+    get:
+      operationId: getPaymentRequest
+      summary: Trạng thái yêu cầu thanh toán
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /payment-requests/{id}/cancel:
+    post:
+      operationId: cancelPaymentRequest
+      summary: Hủy yêu cầu còn pending (đóng QR, nhả pay_code)
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaymentRequest" }
+        "409":
+          description: Không hủy được — đã settled hoặc đã hủy
+
+  /transactions:
+    get:
+      operationId: listTransactions
+      summary: Danh sách giao dịch settled (đối soát)
+      parameters:
+        - { in: query, name: since, schema: { type: string, format: date-time } }
+        - { in: query, name: limit, schema: { type: integer, default: 50, maximum: 200 } }
+        - { in: query, name: cursor, schema: { type: string } }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/Transaction" }
+                  next_cursor: { type: string, nullable: true }
+
+  /webhook-endpoints:
+    post:
+      operationId: registerWebhook
+      summary: Đăng ký URL nhận sự kiện
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, events]
+              properties:
+                url: { type: string, format: uri }
+                events:
+                  type: array
+                  items:
+                    type: string
+                    enum: [payment.settled, payment.underpaid, payment.expired]
+      responses:
+        "201":
+          description: Trả về `secret` dùng verify chữ ký HMAC-SHA256 (header `AgentPay-Signature`)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  secret: { type: string, description: "Chỉ hiển thị MỘT lần" }
+
+  /sandbox/simulate-settlement:
+    post:
+      operationId: simulateSettlement
+      summary: "[SANDBOX] Giả lập tiền về cho một payment request"
+      description: Chỉ hoạt động với key `ap_test_*`. Bắn webhook payment.settled như thật.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_request_id]
+              properties:
+                payment_request_id: { type: string }
+                amount:
+                  type: integer
+                  description: Mặc định = amount của request; truyền thấp hơn để test underpaid
+      responses:
+        "200": { description: Đã giả lập }
+        "403": { description: Không phải sandbox key }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: "ap_live_* | ap_test_*" }
+
+  schemas:
+    PaymentRequest:
+      type: object
+      properties:
+        id: { type: string, examples: ["pr_8f3k2m9d"] }
+        status: { type: string, enum: [pending, settled, underpaid, expired, cancelled] }
+        amount: { type: integer }
+        paid_amount: { type: integer, nullable: true }
+        description: { type: string }
+        pay_code:
+          type: string
+          examples: ["AP7K3M9D"]
+          description: Mã trong nội dung chuyển khoản — người trả KHÔNG được sửa
+        qr_image_url:
+          type: string
+          format: uri
+          description: Ảnh VietQR đúng số tiền + pay_code (nhúng thẳng vào chat/web)
+        qr_payload: { type: string, description: "Chuỗi EMVCo nếu muốn tự render QR" }
+        checkout_url:
+          type: string
+          format: uri
+          description: Trang thanh toán public (QR + đếm ngược + tự cập nhật trạng thái)
+        expires_at: { type: string, format: date-time }
+        settled_at: { type: string, format: date-time, nullable: true }
+        metadata: { type: object, additionalProperties: true }
+        livemode: { type: boolean }
+
+    Transaction:
+      type: object
+      properties:
+        id: { type: string }
+        payment_request_id: { type: string }
+        amount: { type: integer }
+        bank_ref: { type: string, description: "referenceCode từ bank-feed" }
+        settled_at: { type: string, format: date-time }
+
+    WebhookEvent:
+      type: object
+      description: |
+        Payload POST tới URL đã đăng ký. Verify: HMAC-SHA256(secret, raw_body)
+        so với header `AgentPay-Signature`; loại sự kiện trong header `AgentPay-Event`.
+        Handler phải idempotent theo `event_id` — sự kiện có thể gửi lại khi không nhận 2xx.
+      properties:
+        event_id: { type: string }
+        type: { type: string, enum: [payment.settled, payment.underpaid, payment.expired] }
+        created_at: { type: string, format: date-time }
+        data: { $ref: "#/components/schemas/PaymentRequest" }
+
+  responses:
+    Unauthorized: { description: API key sai hoặc thiếu }
+    NotFound: { description: Không tìm thấy hoặc không thuộc tenant của key }
+    ValidationError: { description: Body không hợp lệ }
+    RateLimited:
+      description: Quá hạn mức (free 50 settled/tháng; 120 request/phút)
+      headers:
+        Retry-After: { schema: { type: integer } }
