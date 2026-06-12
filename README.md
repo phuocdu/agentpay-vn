@@ -1,5 +1,9 @@
 # AgentPay VN
 
+[![PyPI version](https://img.shields.io/pypi/v/agentpay-vn?logo=pypi&logoColor=white)](https://pypi.org/project/agentpay-vn/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![phuocdu/agentpay-vn MCP server](https://glama.ai/mcp/servers/phuocdu/agentpay-vn/badges/score.svg)](https://glama.ai/mcp/servers/phuocdu/agentpay-vn)
+
 **VietQR payment infrastructure for AI agents — collect money inside any conversation.**
 
 AgentPay VN lets AI agents (Claude, GPT, custom bots) generate payment QR codes, send them to users, and automatically confirm when the money arrives — all without ever holding or touching funds.  Money flows directly from the payer's bank account into the merchant's account; AgentPay only reads the bank transaction feed to confirm settlement.
