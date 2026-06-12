@@ -202,14 +202,14 @@ print(ep["secret"])  # store this — shown only once
 
 ## Self-hosting
 
-AgentPay runs as part of the [Sổ Nợ AI](https://github.com/drave-io/sono-ai) FastAPI backend.
+AgentPay runs as part of the [Sổ Nợ AI](https://sono.servicesai.vn) FastAPI backend.
 
 ### Requirements
 
 - Docker Swarm cluster (same as Sono)
 - MongoDB (shared with Sono)
 - SePay bank feed account (for live payments)
-- Nginx with `agentpay.servicesai.vn` vhost (see [`server/`](../nginx/sono.servicesai.vn.conf))
+- Nginx with an `agentpay.servicesai.vn` vhost
 
 ### Environment variables
 
@@ -256,4 +256,4 @@ The response includes the full key — store it immediately; it is shown only on
 
 ## License
 
-MIT © 2025 Drave / Sổ Nợ AI team
+MIT © 2026 ServicesAI — see [LICENSE](LICENSE).
