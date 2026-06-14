@@ -7,7 +7,7 @@ packages = ["agentpay"]
 
 [project]
 name = "agentpay-vn"
-version = "0.1.0"
+version = "1.0.0"
 description = "VietQR payment infrastructure for AI agents — AgentPay VN MCP server & Python SDK"
 keywords = ["vietqr", "mcp", "model-context-protocol", "ai-agents", "payments", "vietnam", "claude", "fintech", "sepay"]
 license = { text = "MIT" }
