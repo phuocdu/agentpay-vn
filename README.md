@@ -5,6 +5,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/agentpay-vn?logo=pypi&logoColor=white)](https://pypi.org/project/agentpay-vn/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-listed-0098FF)](https://registry.modelcontextprotocol.io/v0/servers?search=agentpay-vn)
+[![phuocdu/agentpay-vn MCP server](https://glama.ai/mcp/servers/phuocdu/agentpay-vn/badges/score.svg)](https://glama.ai/mcp/servers/phuocdu/agentpay-vn)
 
 **VietQR payment infrastructure for AI agents — collect money inside any conversation.**
 
